@@ -1,1 +1,0 @@
-/home/magnus/CAS/SensorFusion/autonomous_ws/devel/.private/sensor_fusion/lib/pkgconfig/sensor_fusion.pc

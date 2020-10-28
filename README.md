@@ -1,6 +1,7 @@
 # SensorFusion
 
 # Launching Project
+cd Firmware/launch
 roslaunch px4 mavros_posix_sitl.launch
 roslaunch nodes.launch
 

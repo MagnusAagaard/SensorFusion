@@ -1,0 +1,3 @@
+<launch>
+  <node name="sensor_fusion_node" pkg="sensor_fusion" type="sensor_fusion.py" output="screen"/>
+</launch>
