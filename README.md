@@ -6,7 +6,7 @@ roslaunch nodes.launch
 
 # Downloading PX4
 git clone https://github.com/PX4/Firmware.git
-bash ./Firmware/Tools/setup/ubuntu.sh
+source /ubuntu_sim_ros_melodic.sh
 cd Firmware
 make px4_sitl_default gazebo
 
