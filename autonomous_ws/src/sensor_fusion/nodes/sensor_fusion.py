@@ -11,7 +11,10 @@ class Drone():
         self.hz = 25
         self.rate = rospy.Rate(self.hz)
         self.state = State()
-
+        rospy.wait_for_service("/mavros/cmd/arming")
+        rospy.loginfo("/mavros/cmd/arming service ready!")
+        rospy.wait_for_service("mavros/set_mode")
+        rospy.loginfo("/mavros/set_mode service ready!")
         self.arming_client = rospy.ServiceProxy("/mavros/cmd/arming", CommandBool)
         self.set_mode_client = rospy.ServiceProxy("/mavros/set_mode", SetMode)
 
