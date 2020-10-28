@@ -1,7 +1,7 @@
-./autonomous_ws/build
-./autonomous_ws/devel
-./autonomous_ws/logs
-./autonomous_ws/.catkin_tools
-./autonomous_ws/src/mavlink
-./autonomous_ws/src/mavros
-./autonomous_ws/src/.rosinstall*
+autonomous_ws/build/
+autonomous_ws/devel/
+autonomous_ws/logs/
+autonomous_ws/.catkin_tools/
+autonomous_ws/src/mavlink/
+autonomous_ws/src/mavros/
+.autonomous_ws/src/.rosinstall*
