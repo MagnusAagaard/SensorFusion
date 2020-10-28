@@ -1,0 +1,10 @@
+mavros/mavros
+/home/magnus/CAS/SensorFusion/autonomous_ws/devel/.private/mavros/cmake.lock /home/magnus/CAS/SensorFusion/autonomous_ws/devel/./cmake.lock
+/home/magnus/CAS/SensorFusion/autonomous_ws/devel/.private/mavros/lib/libmavros.so /home/magnus/CAS/SensorFusion/autonomous_ws/devel/lib/libmavros.so
+/home/magnus/CAS/SensorFusion/autonomous_ws/devel/.private/mavros/lib/libmavros_plugins.so /home/magnus/CAS/SensorFusion/autonomous_ws/devel/lib/libmavros_plugins.so
+/home/magnus/CAS/SensorFusion/autonomous_ws/devel/.private/mavros/lib/python2.7/dist-packages/mavros/__init__.py /home/magnus/CAS/SensorFusion/autonomous_ws/devel/lib/python2.7/dist-packages/mavros/__init__.py
+/home/magnus/CAS/SensorFusion/autonomous_ws/devel/.private/mavros/lib/pkgconfig/mavros.pc /home/magnus/CAS/SensorFusion/autonomous_ws/devel/lib/pkgconfig/mavros.pc
+/home/magnus/CAS/SensorFusion/autonomous_ws/devel/.private/mavros/lib/mavros/gcs_bridge /home/magnus/CAS/SensorFusion/autonomous_ws/devel/lib/mavros/gcs_bridge
+/home/magnus/CAS/SensorFusion/autonomous_ws/devel/.private/mavros/lib/mavros/mavros_node /home/magnus/CAS/SensorFusion/autonomous_ws/devel/lib/mavros/mavros_node
+/home/magnus/CAS/SensorFusion/autonomous_ws/devel/.private/mavros/share/mavros/cmake/mavrosConfig.cmake /home/magnus/CAS/SensorFusion/autonomous_ws/devel/share/mavros/cmake/mavrosConfig.cmake
+/home/magnus/CAS/SensorFusion/autonomous_ws/devel/.private/mavros/share/mavros/cmake/mavrosConfig-version.cmake /home/magnus/CAS/SensorFusion/autonomous_ws/devel/share/mavros/cmake/mavrosConfig-version.cmake

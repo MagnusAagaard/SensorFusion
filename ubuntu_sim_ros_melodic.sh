@@ -55,8 +55,8 @@ sudo apt install python-rosinstall python-rosinstall-generator python-wstool bui
 sudo apt-get install python-catkin-tools python-rosinstall-generator -y
 
 ## Create catkin workspace
-mkdir -p ~/catkin_ws/src
-cd ~/catkin_ws
+#mkdir -p ~/catkin_ws/src
+cd ./autonomous_ws
 catkin init
 wstool init src
 
@@ -98,14 +98,14 @@ sudo bash -c "$install_geo"
 ## Build!
 catkin build
 ## Re-source environment to reflect new packages/build environment
-catkin_ws_source="source ~/catkin_ws/devel/setup.bash"
-if grep -Fxq "$catkin_ws_source" ~/.bashrc; then echo ROS catkin_ws setup.bash already in .bashrc; 
-else echo "$catkin_ws_source" >> ~/.bashrc; fi
-eval $catkin_ws_source
+#catkin_ws_source="source ~/catkin_ws/devel/setup.bash"
+#if grep -Fxq "$catkin_ws_source" ~/.bashrc; then echo ROS catkin_ws setup.bash already in .bashrc; 
+#else echo "$catkin_ws_source" >> ~/.bashrc; fi
+#eval $catkin_ws_source
 
 
 # Go to the firmware directory
-clone_dir=~/src
-cd $clone_dir/Firmware
+#clone_dir=~/src
+#cd $clone_dir/Firmware
 
 

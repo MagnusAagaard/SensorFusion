@@ -1,0 +1,7 @@
+mavros/test_mavros
+/home/magnus/CAS/SensorFusion/autonomous_ws/devel/.private/test_mavros/cmake.lock /home/magnus/CAS/SensorFusion/autonomous_ws/devel/./cmake.lock
+/home/magnus/CAS/SensorFusion/autonomous_ws/devel/.private/test_mavros/lib/libmavros_sitl_test.so /home/magnus/CAS/SensorFusion/autonomous_ws/devel/lib/libmavros_sitl_test.so
+/home/magnus/CAS/SensorFusion/autonomous_ws/devel/.private/test_mavros/lib/test_mavros/sitl_test_node /home/magnus/CAS/SensorFusion/autonomous_ws/devel/lib/test_mavros/sitl_test_node
+/home/magnus/CAS/SensorFusion/autonomous_ws/devel/.private/test_mavros/lib/pkgconfig/test_mavros.pc /home/magnus/CAS/SensorFusion/autonomous_ws/devel/lib/pkgconfig/test_mavros.pc
+/home/magnus/CAS/SensorFusion/autonomous_ws/devel/.private/test_mavros/share/test_mavros/cmake/test_mavrosConfig.cmake /home/magnus/CAS/SensorFusion/autonomous_ws/devel/share/test_mavros/cmake/test_mavrosConfig.cmake
+/home/magnus/CAS/SensorFusion/autonomous_ws/devel/.private/test_mavros/share/test_mavros/cmake/test_mavrosConfig-version.cmake /home/magnus/CAS/SensorFusion/autonomous_ws/devel/share/test_mavros/cmake/test_mavrosConfig-version.cmake
