@@ -1,23 +1,23 @@
 # SensorFusion
 
 # Launching Project
-cd Firmware/launch
-roslaunch px4 mavros_posix_sitl.launch
-roslaunch nodes.launch
+cd Firmware/launch  
+roslaunch px4 mavros_posix_sitl.launch  
+roslaunch nodes.launch  
 
 # Downloading PX4
-Clone PX4 to a folder on your computer, NOT THIS GITHUB REPOSITORY!
-git clone https://github.com/PX4/Firmware.git
-cd ~path/to/this/repository
-source /ubuntu_sim_ros_melodic.sh
-cd ~path/to/cloned/px4/repository/Firmware
-make px4_sitl_default gazebo
-
-Add below to the bachrc file: Note that the paths should be changed accordingly
+Clone PX4 to a folder on your computer, NOT THIS GITHUB REPOSITORY!  
+git clone https://github.com/PX4/Firmware.git  
+cd ~path/to/this/repository  
+source /ubuntu_sim_ros_melodic.sh  
+cd ~path/to/cloned/px4/repository/Firmware  
+make px4_sitl_default gazebo  
+  
+Add below to the bachrc file: Note that the paths should be changed accordingly  
 # Sourcing ROS and workspace
-source /opt/ros/melodic/setup.bash
-source /SensorFusion/autonomous_ws/develsetup.bash
+source /opt/ros/melodic/setup.bash  
+source /SensorFusion/autonomous_ws/develsetup.bash  
 # Sourcing and setup PX4 and Gazebo
-source /home/$USER/src/Firmware/Tools/setup_gazebo.bash /home/$USER/src/Firmware /home/$USER/src/Firmware/build/px4_sitl_default
-export ROS_PACKAGE_PATH=$ROS_PACKAGE_PATH:/home/$USER/src/Firmware
-export ROS_PACKAGE_PATH=$ROS_PACKAGE_PATH:/home/$USER/src/Firmware/Tools/sitl_gazebo
+source /home/$USER/src/Firmware/Tools/setup_gazebo.bash /home/$USER/src/Firmware /home/$USER/src/Firmware/build/px4_sitl_default  
+export ROS_PACKAGE_PATH=$ROS_PACKAGE_PATH:/home/$USER/src/Firmware  
+export ROS_PACKAGE_PATH=$ROS_PACKAGE_PATH:/home/$USER/src/Firmware/Tools/sitl_gazebo  
