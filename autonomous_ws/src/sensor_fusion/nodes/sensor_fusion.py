@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import rospy
 import mavros
@@ -6,7 +6,7 @@ from geometry_msgs.msg import PoseStamped
 from mavros.msg import State
 from mavros.src import CommandBool, SetMode
 
-class drone():
+class Drone():
     def __init__(self):
         self.hz = 25
         self.rate = rospy.Rate(self.hz)
@@ -64,4 +64,4 @@ class drone():
                 self.rate.sleep()
 
 if __name__ == '__main__':
-    drone = drone()
+    drone = Drone()
