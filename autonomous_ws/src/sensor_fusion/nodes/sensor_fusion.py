@@ -3,8 +3,8 @@
 import rospy
 import mavros
 from geometry_msgs.msg import PoseStamped
-from mavros.msg import State
-from mavros.src import CommandBool, SetMode
+from mavros_msgs.msg import State
+from mavros_msgs.srv import CommandBool, SetMode
 
 class Drone():
     def __init__(self):
@@ -19,7 +19,7 @@ class Drone():
         self.set_mode_client = rospy.ServiceProxy("/mavros/set_mode", SetMode)
 
         self.setPoint_pub = rospy.Publisher("/mavros/setpoint_position/local", PoseStamped, queue_size=1)
-        self.state_sub = rospy.Subscriber(mavros.get_topic('state'), State, self.state_cb)
+        self.state_sub = rospy.Subscriber('/mavros/state', State, self.state_cb)
 
         self.setup()
 
@@ -27,7 +27,6 @@ class Drone():
         self.state = state
 
     def setup(self):
-        rospy.init_node('sensor_Fusion', anonymous=True)
         prevState = self.state
 
 
@@ -67,4 +66,5 @@ class Drone():
                 self.rate.sleep()
 
 if __name__ == '__main__':
+    rospy.init_node('sensor_fusion', anonymous=True)
     drone = Drone()
