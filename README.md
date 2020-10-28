@@ -6,12 +6,14 @@ roslaunch px4 mavros_posix_sitl.launch
 roslaunch nodes.launch
 
 # Downloading PX4
+Clone PX4 to a folder on your computer, NOT THIS GITHUB REPOSITORY!
 git clone https://github.com/PX4/Firmware.git
+cd ~path/to/this/repository
 source /ubuntu_sim_ros_melodic.sh
-cd Firmware
+cd ~path/to/cloned/px4/repository/Firmware
 make px4_sitl_default gazebo
 
-Add below to the bachrc file:
+Add below to the bachrc file: Note that the paths should be changed accordingly
 # Sourcing ROS and workspace
 source /opt/ros/melodic/setup.bash
 source /SensorFusion/autonomous_ws/develsetup.bash
