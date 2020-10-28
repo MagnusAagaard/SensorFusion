@@ -1,9 +1,8 @@
 # SensorFusion
 
 # Launching Project
-cd Firmware/launch  
 roslaunch px4 mavros_posix_sitl.launch  
-roslaunch nodes.launch  
+roslaunch sensor_fusion nodes.launch  
 
 # Downloading PX4
 Clone PX4 to a folder on your computer, NOT THIS GITHUB REPOSITORY!  
