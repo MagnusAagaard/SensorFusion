@@ -11,6 +11,7 @@ class Drone():
         self.hz = 25
         self.rate = rospy.Rate(self.hz)
         self.state = State()
+        self.receivedPosition = False
         rospy.wait_for_service("/mavros/cmd/arming")
         rospy.loginfo("/mavros/cmd/arming service ready!")
         rospy.wait_for_service("mavros/set_mode")
@@ -25,6 +26,7 @@ class Drone():
 
     def state_cb(self, state):
         self.state = state
+        self.receivedPosition = True
 
     def setup(self):
         prevState = self.state
@@ -53,11 +55,11 @@ class Drone():
         print("Waiting for change mode to offboard & arming rotorcraft...")
         while not self.state.mode == "OFFBOARD" and not self.state.armed:
             if not self.state.mode == "OFFBOARD":
-                set_mode_client(base_mode=0, custom_mode="OFFBOARD")
+                self.set_mode_client(base_mode=0, custom_mode="OFFBOARD")
                 print("OFFBOARD enalbe")
 
             if not self.state.armed:
-                arming_client(True)
+                self.arming_client(True)
                 print("Rotorcraft armed")
 
             # send a few takeoff commands
