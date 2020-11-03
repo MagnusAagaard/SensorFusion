@@ -4,7 +4,7 @@
 roslaunch px4 mavros_posix_sitl.launch  
 roslaunch sensor_fusion nodes.launch  
 
-# Downloading PX4
+# Downloading PX4 and setup this repository
 Clone PX4 to a folder on your computer, NOT THIS GITHUB REPOSITORY!  
 git clone https://github.com/PX4/Firmware.git  
 Clone this repository to another location on your computer. Where you want this repository to be  
@@ -15,10 +15,10 @@ cd ~path/to/cloned/px4/repository/Firmware
 make px4_sitl_default gazebo  
   
 Add below to the bachrc file: Note that the paths should be changed accordingly  
-# Sourcing ROS and workspace
-source /opt/ros/melodic/setup.bash  
-source /SensorFusion/autonomous_ws/devel/setup.bash  
-# Sourcing and setup PX4 and Gazebo
 source /home/$USER/src/Firmware/Tools/setup_gazebo.bash /home/$USER/src/Firmware /home/$USER/src/Firmware/build/px4_sitl_default  
 export ROS_PACKAGE_PATH=$ROS_PACKAGE_PATH:/home/$USER/src/Firmware  
-export ROS_PACKAGE_PATH=$ROS_PACKAGE_PATH:/home/$USER/src/Firmware/Tools/sitl_gazebo  
+export ROS_PACKAGE_PATH=$ROS_PACKAGE_PATH:/home/$USER/src/Firmware/Tools/sitl_gazebo 
+
+# Sourcing ROS and workspace
+Before launching launch files you should source your workspace:  
+source ./SensorFusion/autonomous_ws/devel/setup.bash  
