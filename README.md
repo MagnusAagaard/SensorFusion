@@ -9,7 +9,7 @@ Clone PX4 to a folder on your computer, NOT THIS GITHUB REPOSITORY!
 git clone https://github.com/PX4/Firmware.git  
 Clone this repository to another location on your computer. Where you want this repository to be  
 git clone https://github.com/MagnusAagaard/SensorFusion.git  
-cd ~path/to/this/repository  
+cd /SensorFusion  
 bash ./ubuntu_sim_ros_melodic.sh  
 cd ~path/to/cloned/px4/repository/Firmware  
 make px4_sitl_default gazebo  
