@@ -11,7 +11,7 @@ find_package(catkin REQUIRED COMPONENTS
 )
 
 # setup.py is called during catkin build
-catkin_python_setup()
+#catkin_python_setup()
 
 
 catkin_package(

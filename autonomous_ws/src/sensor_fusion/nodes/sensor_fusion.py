@@ -1,18 +1,21 @@
 #!/usr/bin/env python3
-
+import sys
+import os
 import rospy
 import mavros
 from sensor_msgs.msg import NavSatFix, Imu
-from geometry_msgs.msg import Vector3
 
 import numpy as np
 from math import pi, sqrt, atan2
 import matplotlib.pyplot as plt
 
+from utm import utmconv
+
 
 class SensorFusion:
     def __init__(self):
         self.setup_subs()
+        self.uc = utmconv()
         self.dt = 0.02
         #First three is GPS, next 3 is IMU acc, next 3 is IMU gyro
         self.data_idx = np.zeros(9, dtype=np.int8)
