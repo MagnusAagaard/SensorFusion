@@ -40,8 +40,9 @@ class SensorFusion:
         self.lat = msg.latitude
         self.lon = msg.longitude
         self.alt = msg.altitude
+        (hemisphere, zone, letter, e1, n1) = uc.geodetic_to_utm(self.lat,self.lon)
         self.data_idx[:3] = 1
-        self.y[:3] = np.asarray([msg.latitude, msg.longitude, msg.altitude]).reshape(3,1)
+        self.y[:3] = np.asarray([e1, n1, msg.altitude]).reshape(3,1)
 
     def imu_cb(self, msg):
         self.u[:3] = np.asarray([msg.linear_acceleration.x, msg.linear_acceleration.y, msg.linear_acceleration.z]).reshape(3,1)
