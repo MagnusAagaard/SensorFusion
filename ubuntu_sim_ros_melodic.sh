@@ -36,6 +36,7 @@ sudo apt-key adv --keyserver 'hkp://keyserver.ubuntu.com:80' --recv-key C1CF6E31
 sudo apt-get update
 ## Get ROS/Gazebo
 sudo apt install ros-melodic-desktop-full -y
+sudo apt install python-rosdep
 ## Initialize rosdep
 sudo rosdep init
 rosdep update
