@@ -68,6 +68,6 @@ class Drone():
                 self.rate.sleep()
 
 if __name__ == '__main__':
-    rospy.init_node('sensor_fusion', anonymous=True)
+    rospy.init_node('drone_control', anonymous=True)
     drone = Drone()
     rospy.spin()

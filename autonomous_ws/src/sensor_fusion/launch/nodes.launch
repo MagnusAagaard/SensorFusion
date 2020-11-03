@@ -1,3 +1,3 @@
 <launch>
-  <node name="sensor_fusion_node" pkg="sensor_fusion" type="sensor_fusion.py" output="screen"/>
+  <node name="drone_control_node" pkg="sensor_fusion" type="drone_control.py" output="screen"/>
 </launch>
