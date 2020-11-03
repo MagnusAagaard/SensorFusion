@@ -70,3 +70,4 @@ class Drone():
 if __name__ == '__main__':
     rospy.init_node('sensor_fusion', anonymous=True)
     drone = Drone()
+    rospy.spin()
