@@ -8,7 +8,7 @@ roslaunch sensor_fusion nodes.launch
 Clone PX4 to a folder on your computer, NOT THIS GITHUB REPOSITORY!  
 git clone https://github.com/PX4/Firmware.git  
 cd ~path/to/this/repository  
-source /ubuntu_sim_ros_melodic.sh  
+bash ./ubuntu_sim_ros_melodic.sh  
 cd ~path/to/cloned/px4/repository/Firmware  
 make px4_sitl_default gazebo  
   
