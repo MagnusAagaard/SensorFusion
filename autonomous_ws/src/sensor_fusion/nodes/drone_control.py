@@ -2,9 +2,12 @@
 
 import rospy
 import mavros
+from std_msgs.msg import Header
 from geometry_msgs.msg import PoseStamped
 from mavros_msgs.msg import State
 from mavros_msgs.srv import CommandBool, SetMode
+from math import sqrt
+
 
 class Drone():
     def __init__(self):
@@ -12,6 +15,14 @@ class Drone():
         self.rate = rospy.Rate(self.hz)
         self.state = State()
         self.receivedPosition = False
+        self.home_position = PoseStamped()
+        self.current_position = PoseStamped()
+        self.altitude = 5
+
+        self.setup_topics()
+        self.setup()
+
+    def setup_topics(self):
         rospy.wait_for_service("/mavros/cmd/arming")
         rospy.loginfo("/mavros/cmd/arming service ready!")
         rospy.wait_for_service("mavros/set_mode")
@@ -19,24 +30,24 @@ class Drone():
         self.arming_client = rospy.ServiceProxy("/mavros/cmd/arming", CommandBool)
         self.set_mode_client = rospy.ServiceProxy("/mavros/set_mode", SetMode)
 
-        self.setPoint_pub = rospy.Publisher("/mavros/setpoint_position/local", PoseStamped, queue_size=1)
+        ## Subscribers:
         self.state_sub = rospy.Subscriber('/mavros/state', State, self.state_cb)
+        self.pos_sub = rospy.Subscriber("/mavros/local_position/pose", PoseStamped, self.position_cb)
 
-        self.setup()
+        ## Publishers:
+        self.target_pos_pub = rospy.Publisher("/mavros/setpoint_position/local", PoseStamped, queue_size=1)
 
+    ## Callbacks
     def state_cb(self, state):
         self.state = state
+
+    def position_cb(self, position):
+        self.current_position = position
+        if(not self.receivedPosition):
+            self.home_position = position
         self.receivedPosition = True
 
     def setup(self):
-        prevState = self.state
-
-
-        self.takeOffPosition = PoseStamped()
-        self.takeOffPosition.pose.position.x = 0
-        self.takeOffPosition.pose.position.y = 0
-        self.takeOffPosition.pose.position.z = 2
-
         print("Waiting for FCU connection...")
         while not self.state.connected:
             self.rate.sleep()
@@ -47,9 +58,14 @@ class Drone():
             self.rate.sleep()
         print("Position received")
 
+        self.takeOffPosition = PoseStamped()
+        self.takeOffPosition.pose.position.x = self.home_position.pose.position.x
+        self.takeOffPosition.pose.position.y = self.home_position.pose.position.y
+        self.takeOffPosition.pose.position.z = self.altitude
+
         # send a few takeoff commands before starting
         for i in range(20):
-            self.setPoint_pub.publish(self.takeOffPosition)
+            self.target_pos_pub.publish(self.takeOffPosition)
             self.rate.sleep()
 
         print("Waiting for change mode to offboard & arming rotorcraft...")
@@ -62,12 +78,72 @@ class Drone():
                 self.arming_client(True)
                 print("Rotorcraft armed")
 
-            # send a few takeoff commands
-            for i in range(20):
-                self.setPoint_pub.publish(self.takeOffPosition)
+            # reached takeoff position
+            header = Header()
+            while(0.2 < self.distanceToTarget(self.takeOffPosition)):
+                header.stamp = rospy.Time.now()
+                self.takeOffPosition.header = header
+                self.target_pos_pub.publish(self.takeOffPosition)
                 self.rate.sleep()
+
+    def distanceToTarget(self,targetPosition):
+        x = targetPosition.pose.position.x - self.current_position.pose.position.x
+        y = targetPosition.pose.position.y - self.current_position.pose.position.y
+        z = targetPosition.pose.position.z - self.current_position.pose.position.z
+        return sqrt(x*x + y*y + z*z)
+
+    def makeWaypoints(self):
+        waypoints = []
+        targetPosition1 = PoseStamped()
+        targetPosition1.pose.position.x = 5
+        targetPosition1.pose.position.y = 5
+        targetPosition1.pose.position.z = self.altitude
+        waypoints.append(targetPosition1)
+        targetPosition2 = PoseStamped()
+        targetPosition2.pose.position.x = 10
+        targetPosition2.pose.position.y = 0
+        targetPosition2.pose.position.z = self.altitude
+        waypoints.append(targetPosition2)
+        targetPosition3 = PoseStamped()
+        targetPosition3.pose.position.x = 5
+        targetPosition3.pose.position.y = -5
+        targetPosition3.pose.position.z = self.altitude
+        waypoints.append(targetPosition3)
+        targetPosition4 = PoseStamped()
+        targetPosition4.pose.position.x = 0
+        targetPosition4.pose.position.y = 0
+        targetPosition4.pose.position.z = self.altitude
+        waypoints.append(targetPosition4)
+        targetPosition5 = PoseStamped()
+        targetPosition5.pose.position.x = 0
+        targetPosition5.pose.position.y = 0
+        targetPosition5.pose.position.z = -1
+        waypoints.append(targetPosition5)
+        return waypoints
+
+    def shutdownDrone(self):
+        rospy.signal_shutdown("Done")
+
+    def flyRoute(self):
+        print("Flying Route")
+        waypoint = 0
+        header = Header()
+        waypoints = self.makeWaypoints()
+        while (waypoint < len(waypoints) and self.state.armed):
+            targetPosition = waypoints[waypoint]
+            header.stamp = rospy.Time.now()
+            targetPosition.header = header
+            self.target_pos_pub.publish(targetPosition)
+            self.rate.sleep()
+            if(self.distanceToTarget(targetPosition) < 0.15):
+                print("next waypoint:")
+                #print(targetPosition)
+                waypoint += 1
+
 
 if __name__ == '__main__':
     rospy.init_node('drone_control', anonymous=True)
     drone = Drone()
+    drone.flyRoute()
+    drone.shutdownDrone()
     rospy.spin()
