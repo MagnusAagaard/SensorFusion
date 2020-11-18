@@ -26,6 +26,7 @@ class SensorFusion:
         #self.C = np.identity(self.y.shape[0])
 
         ## Nyt stuff:
+        self.uc = utmconv()
         #settings
         self.sigma_gps = 3/sqrt(3)
         self.sigma_non_holonomic = 20
@@ -34,12 +35,15 @@ class SensorFusion:
         self.y = np.zeros((3,1))
         self.data_idx = np.zeros(5, dtype=np.int8)
         self.data_idx[3:5] = 1
-        self.u = np.zeros((6,1))
+        msg = rospy.wait_for_message('mavros/imu/data_raw', Imu)
+        self.u = np.asarray([msg.linear_acceleration.x, msg.linear_acceleration.y, msg.linear_acceleration.z,
+                            msg.angular_velocity.x, msg.angular_velocity.y, msg.angular_velocity.z]).reshape(6,1)
+        #self.u = np.zeros((6,1))
         self.xh = self.init_navigation_state()
         self.delta_u_h = np.zeros((6,1))
         (self.P, self.Q1, self.Q2, _, _) = self.init_filter()
         self.setup_subs()
-        self.uc = utmconv()
+        
         
         
     def setup_subs(self):
@@ -50,7 +54,7 @@ class SensorFusion:
         self.lat = msg.latitude
         self.lon = msg.longitude
         self.alt = msg.altitude
-        (hemisphere, zone, letter, e1, n1) = uc.geodetic_to_utm(self.lat,self.lon)
+        (hemisphere, zone, letter, e1, n1) = self.uc.geodetic_to_utm(self.lat,self.lon)
         self.data_idx[:3] = 1
         self.y[:3] = np.asarray([e1, n1, msg.altitude]).reshape(3,1)
 
@@ -65,7 +69,13 @@ class SensorFusion:
         # Init coord. rotational matrix
         Rb2t = np.array(self.Rt2b([roll, pitch, heading]))
         q = self.dcm2q(Rb2t)
-        x_h = np.concatenate((np.zeros((6,1)), q))
+        # Få inital pos estimate her og smid ind!
+        msg = rospy.wait_for_message('/mavros/global_position/global', NavSatFix)
+        self.lat = msg.latitude
+        self.lon = msg.longitude
+        (hemisphere, zone, letter, e1, n1) = self.uc.geodetic_to_utm(self.lat,self.lon)
+        initial_pos = np.array([e1,n1, msg.altitude]).reshape(3,1)
+        x_h = np.concatenate((initial_pos,np.zeros((3,1)), q))
         return x_h
 
     def Rt2b(self, ang):
@@ -249,6 +259,7 @@ class SensorFusion:
                 tmp_H = np.vstack((tmp_H,H[i,:]))
                 tmp_y.append(y[i])
                 tmp_R.append(R[i,i])
+        self.data_idx[0:3] = 0
 
 
         H = tmp_H[1:]
@@ -256,8 +267,6 @@ class SensorFusion:
         R = np.eye(len(tmp_R))*np.array(tmp_R)
 
         # Calculate Kalman gain
-        #tmp = np.linalg.inv(np.matmul(np.matmul(H, self.P), np.transpose(H)) + R)
-        #K = np.matmul(np.matmul(self.P, np.transpose(H)),tmp)
         K = np.matmul(np.matmul(self.P,np.transpose(H)),np.linalg.inv(np.matmul(np.matmul(H,self.P),np.transpose(H)) + R))
 
         # Update the perturbation state estimate
@@ -269,6 +278,8 @@ class SensorFusion:
         self.delta_u_h = z[9:15]
 
         self.P = np.matmul((np.eye(15)-np.matmul(K,H)),self.P)
+
+        print(self.xh)
 
 
     
