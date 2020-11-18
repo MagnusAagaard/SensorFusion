@@ -15,30 +15,31 @@ from utm import utmconv
 
 class SensorFusion:
     def __init__(self):
-        self.setup_subs()
-        self.uc = utmconv()
-        self.dt = 0.02
-        #First three is GPS, next 3 is IMU acc, next 3 is IMU gyro
-        self.data_idx = np.zeros(5, dtype=np.int8)
-        self.data_idx[3:5] = 1
-        self.lat = 0
-        self.lon = 0
-        self.alt = 0
-        self.y = np.zeros((3,1))
-        self.xhat = np.zeros((3,1))
-        self.sigma = np.identity(self.xhat.shape[0])*10000
-        self.Q = np.identity(self.u.shape[0])
-        self.R = np.identity(self.y.shape[0])*0.02
-        self.C = np.identity(self.y.shape[0])
+        #self.lat = 0
+        #self.lon = 0
+        #self.alt = 0
+        
+        #self.xhat = np.zeros((3,1))
+        #self.sigma = np.identity(self.xhat.shape[0])*10000
+        #self.Q = np.identity(self.u.shape[0])
+        #self.R = np.identity(self.y.shape[0])*0.02
+        #self.C = np.identity(self.y.shape[0])
 
         ## Nyt stuff:
         #settings
         self.sigma_gps = 3/sqrt(3)
         self.sigma_non_holonomic = 20
+
+        self.dt = 0.02
+        self.y = np.zeros((3,1))
+        self.data_idx = np.zeros(5, dtype=np.int8)
+        self.data_idx[3:5] = 1
         self.u = np.zeros((6,1))
         self.xh = self.init_navigation_state()
         self.delta_u_h = np.zeros((6,1))
         (self.P, self.Q1, self.Q2, _, _) = self.init_filter()
+        self.setup_subs()
+        self.uc = utmconv()
         
         
     def setup_subs(self):
@@ -147,7 +148,7 @@ class SensorFusion:
 
     def nav_eq(self, x, u, dt):
         g_t = np.array([0,0,-9.82])
-        f_t = self.q2dcm(x[6:10])*u[0:3]
+        f_t = np.matmul(self.q2dcm(x[6:10]),u[0:3])
         acc_t = f_t - g_t
 
         A = np.eye(6)
@@ -158,7 +159,7 @@ class SensorFusion:
         B = np.concatenate((np.eye(3)*0.5*pow(dt,2),np.eye(3)*dt))
 
         # Position and velocity prediction
-        x[0:5] = A*x[0:5]+B*acc_t
+        x[0:5] = np.matmul(A,x[0:5])+np.matmul(B,acc_t)
 
         # Attitude Quaternion
         w_tb = u[3:6]
@@ -175,13 +176,13 @@ class SensorFusion:
         v = np.linalg.norm(w_tb)*dt
 
         if v != 0:
-            x[6:10] = (cos(v/2)*np.eye(4) + 2/v*sin(v/2)*OMEGA)*x[6:10]
+            x[6:10] = np.matmul((cos(v/2)*np.eye(4) + 2/v*sin(v/2)*OMEGA),x[6:10])
         return x
 
 
     def state_space_model(self, x, u, Ts):
         Rb2t = self.q2dcm(x[6:10])
-        f_t = Rb2t*u[0:3]
+        f_t = np.matmul(Rb2t,u[0:3])
         St = np.array([[0, -f_t[2], f_t[1]],[f_t[2], 0, -f_t[0]],[-f_t[1], f_t[0], 0]])
 
         O = np.zeros((3,3))
@@ -222,19 +223,19 @@ class SensorFusion:
         # Get state space model matrices
         (self.F, self.G) = self.state_space_model(self.xh, self.u_h, Ts)
         # Time update of the Kalman filter state covariance.
-        self.P = self.F*self.P*np.transpose(self.F) + self.G*block_diag(self.Q1, self.Q2)*np.transpose(self.G)
+        self.P = np.matmul(self.F,np.matmul(self.P,np.transpose(self.F))) + np.matmul(self.G,np.matmul(block_diag(self.Q1, self.Q2),np.transpose(self.G)))
         # Defualt measurement observation matrix  and measurement covariance matrix
         y1 = self.y     # GPS data
         y2 = np.zeros((2,1))
         y = np.concatenate((y1,y2))
 
-        Rn2p = self.get_Rb2p()*np.transpose(self.q2dcm(self.xh[6:10]))
+        Rn2p = np.matmul(self.get_Rb2p(),np.transpose(self.q2dcm(self.xh[6:10])))
         H1 = np.concatenate((np.eye(3),np.zeros((3,12))),axis=1)
         H2 = np.concatenate((np.zeros((3,3)), Rn2p, np.zeros((3,9))),axis=1)
         H = np.concatenate((H1, H2))
 
-        R1 = np.concatenate((self.sigma_gps*self.sigma_gps*eye(3), np.zeros((3,2)))axis=1)
-        R2 = np.concatenate((np.zeros((2,3)), self.sigma_non_holonomic*self.sigma_non_holonomic*np.eye(2)), axis=1)
+        R1 = np.concatenate((pow(self.sigma_gps,2)*eye(3), np.zeros((3,2)))axis=1)
+        R2 = np.concatenate((np.zeros((2,3)), pow(self.sigma_non_holonomic,2)*np.eye(2)), axis=1)
         R = np.concatenate((R1,R2))
 
         tmp_H = np.zeros(5)
@@ -256,7 +257,7 @@ class SensorFusion:
         K = np.matmul(np.matmul(self.P, np.transpose(H)),tmp)
 
         # Update the perturbation state estimate
-        z = np.concatenate((np.zeros((9,1)),self.delta_u_h)) + K*(y-H[:0:6]*self.xh)
+        z = np.concatenate((np.zeros((9,1)),self.delta_u_h)) + K*(y-np.matmul(H[:0:6],self.xh))
 
         # Correct the navigation states using current perturbation estimates.
         self.xh[0:6] = self.xh[0:6] + z[0:6]
@@ -265,7 +266,7 @@ class SensorFusion:
 
         self.P = np.matmul((np.eye(15)-K*H),self.P)
 
-        
+
     
 
 if __name__ == "__main__":
