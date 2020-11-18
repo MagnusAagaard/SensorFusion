@@ -63,8 +63,8 @@ class SensorFusion:
         pitch = 0
         heading = 0
         # Init coord. rotational matrix
-        Rb2t = self.Rt2b([roll, pitch, heading])
-        q = dcm2q(Rb2t)
+        Rb2t = np.array(self.Rt2b([roll, pitch, heading]))
+        q = self.dcm2q(Rb2t)
         x_h = np.concatenate((np.zeros((6,1)), q))
         return x_h
 
@@ -76,13 +76,12 @@ class SensorFusion:
         sp = sin(ang[1])
         cy = cos(ang[2])
         sy = sin(ang[2])
-        R = np.asarray([[cy*cp, sy*cp -1*sp],[-1*sy*cr+cy*sp*sr, cy*cr+sy*sp*sr, cp*sr], [sy*sr+cy*sp*cr, -1*cy*sr+sy*sp*cr, cp*cr]])
+        R = np.asarray([[cy*cp, sy*cp, -1*sp],[-1*sy*cr+cy*sp*sr, cy*cr+sy*sp*sr, cp*sr], [sy*sr+cy*sp*cr, -1*cy*sr+sy*sp*cr, cp*cr]])
         return R
 
     def dcm2q(self, R):
         # Function for transformation from directional cosine matrix to quaternions
         q = np.zeros((4,1))
-        np.diag()
         q[3] = 0.5*sqrt(1+np.sum(np.diag(R)))
         q[0] = (R[2,1]-R[1,2])/(4*q[3])
         q[1] = (R[0,2]-R[2,0])/(4*q[3])
@@ -110,7 +109,7 @@ class SensorFusion:
         H = np.concatenate((np.eye(3), np.zeros((3,12))), axis=1)
         return (P,Q1,Q2,R,H)
 
-    def q2dcm(q):
+    def q2dcm(self, q):
         # Function for transformation from quaternions to directional cosine matrix
         p = np.zeros((6,1))
         p[0:4] = pow(q[0:4],2)
@@ -147,7 +146,7 @@ class SensorFusion:
         return R
 
     def nav_eq(self, x, u, dt):
-        g_t = np.array([0,0,-9.82])
+        g_t = np.array([0,0,-9.82]).reshape(3,1)
         f_t = np.matmul(self.q2dcm(x[6:10]),u[0:3])
         acc_t = f_t - g_t
 
@@ -159,13 +158,13 @@ class SensorFusion:
         B = np.concatenate((np.eye(3)*0.5*pow(dt,2),np.eye(3)*dt))
 
         # Position and velocity prediction
-        x[0:5] = np.matmul(A,x[0:5])+np.matmul(B,acc_t)
+        x[0:6] = np.matmul(A,x[0:6])+np.matmul(B,acc_t)
 
         # Attitude Quaternion
         w_tb = u[3:6]
-        P = w_tb[0]*dt
-        Q=w_tb[1]*dt
-        R=w_tb[2]*dt
+        P = (w_tb[0]*dt)[0]
+        Q = (w_tb[1]*dt)[0]
+        R = (w_tb[2]*dt)[0]
 
         OMEGA = np.zeros((4,4))
         OMEGA[0,0:4] = 0.5*np.array([0, R, -Q, P])
@@ -183,7 +182,7 @@ class SensorFusion:
     def state_space_model(self, x, u, Ts):
         Rb2t = self.q2dcm(x[6:10])
         f_t = np.matmul(Rb2t,u[0:3])
-        St = np.array([[0, -f_t[2], f_t[1]],[f_t[2], 0, -f_t[0]],[-f_t[1], f_t[0], 0]])
+        St = np.array([[0, -f_t[2][0], f_t[1][0]],[f_t[2][0], 0, -f_t[0][0]],[-f_t[1][0], f_t[0][0], 0]])
 
         O = np.zeros((3,3))
         I = np.eye(3)
@@ -195,8 +194,12 @@ class SensorFusion:
         Fc = np.concatenate((Fc0, Fc1, Fc2, Fc3, Fc4))
 
         F = np.eye(15) + Ts*Fc
-
-        G = Ts*np.array([[O,O,O,O],[Rb2t,O,O,O],[O,-Rb2t,O,O],[O,O,I,O],[O,O,O,I]])
+        G0 = np.concatenate((O,O,O,O),axis=1)
+        G1 = np.concatenate((Rb2t,O,O,O),axis=1)
+        G2 = np.concatenate((O,-Rb2t,O,O),axis=1)
+        G3 = np.concatenate((O,O,I,O),axis=1)
+        G4 = np.concatenate((O,O,O,I),axis=1)
+        G = Ts*np.concatenate((G0,G1,G2,G3,G4))
 
         return (F,G)
 
@@ -208,7 +211,7 @@ class SensorFusion:
 
     def Gamma(self, q, epsilon):
         R = self.q2dcm(q)
-        OMEGA = np.array([[0, -epsilon[2], epsilon[1]],[epsilon[2],0, -epsilon[0]],[-epsilon[1],epsilon[0],0]])
+        OMEGA = np.array([[0, -epsilon[2][0], epsilon[1][0]],[epsilon[2][0],0, -epsilon[0][0]],[-epsilon[1][0],epsilon[0][0],0]])
         R = np.matmul((np.eye(3)-OMEGA),R)
         q = self.dcm2q(R)
         return q
@@ -219,11 +222,11 @@ class SensorFusion:
         # Calibrate the sensor measurements using current sensor bias estimate.
         self.u_h = self.u + self.delta_u_h
         # Update the INS navigation state
-        self.xh = nav_eq(self.xh, self.u_h, Ts)
+        self.xh = self.nav_eq(self.xh, self.u_h, Ts)
         # Get state space model matrices
         (self.F, self.G) = self.state_space_model(self.xh, self.u_h, Ts)
         # Time update of the Kalman filter state covariance.
-        self.P = np.matmul(self.F,np.matmul(self.P,np.transpose(self.F))) + np.matmul(self.G,np.matmul(block_diag(self.Q1, self.Q2),np.transpose(self.G)))
+        self.P = np.matmul(self.F,(np.matmul(self.P,np.transpose(self.F)))) + np.matmul(self.G, (np.matmul(block_diag(self.Q1, self.Q2),np.transpose(self.G))))
         # Defualt measurement observation matrix  and measurement covariance matrix
         y1 = self.y     # GPS data
         y2 = np.zeros((2,1))
@@ -234,15 +237,15 @@ class SensorFusion:
         H2 = np.concatenate((np.zeros((3,3)), Rn2p, np.zeros((3,9))),axis=1)
         H = np.concatenate((H1, H2))
 
-        R1 = np.concatenate((pow(self.sigma_gps,2)*eye(3), np.zeros((3,2)))axis=1)
+        R1 = np.concatenate((pow(self.sigma_gps,2)*np.eye(3), np.zeros((3,2))),axis=1)
         R2 = np.concatenate((np.zeros((2,3)), pow(self.sigma_non_holonomic,2)*np.eye(2)), axis=1)
         R = np.concatenate((R1,R2))
 
-        tmp_H = np.zeros(5)
+        tmp_H = np.zeros(15)
         tmp_y = []
         tmp_R = []
         for i in range(5):
-            if data_idx[i] == 1:
+            if self.data_idx[i] == 1:
                 tmp_H = np.vstack((tmp_H,H[i,:]))
                 tmp_y.append(y[i])
                 tmp_R.append(R[i,i])
@@ -253,18 +256,19 @@ class SensorFusion:
         R = np.eye(len(tmp_R))*np.array(tmp_R)
 
         # Calculate Kalman gain
-        tmp = np.linalg.inv(np.matmul(np.matmul(H, self.P), np.transpose(H)) + R)
-        K = np.matmul(np.matmul(self.P, np.transpose(H)),tmp)
+        #tmp = np.linalg.inv(np.matmul(np.matmul(H, self.P), np.transpose(H)) + R)
+        #K = np.matmul(np.matmul(self.P, np.transpose(H)),tmp)
+        K = np.matmul(np.matmul(self.P,np.transpose(H)),np.linalg.inv(np.matmul(np.matmul(H,self.P),np.transpose(H)) + R))
 
         # Update the perturbation state estimate
-        z = np.concatenate((np.zeros((9,1)),self.delta_u_h)) + K*(y-np.matmul(H[:0:6],self.xh))
+        z = np.concatenate((np.zeros((9,1)),self.delta_u_h)) + np.matmul(K,(y-np.matmul(H[:,0:6],self.xh[0:6])))
 
         # Correct the navigation states using current perturbation estimates.
         self.xh[0:6] = self.xh[0:6] + z[0:6]
-        self.xh[6:10] = self.Gamma(self.xh[7:10], z[6:9])
+        self.xh[6:10] = self.Gamma(self.xh[6:10], z[6:9])
         self.delta_u_h = z[9:15]
 
-        self.P = np.matmul((np.eye(15)-K*H),self.P)
+        self.P = np.matmul((np.eye(15)-np.matmul(K,H)),self.P)
 
 
     

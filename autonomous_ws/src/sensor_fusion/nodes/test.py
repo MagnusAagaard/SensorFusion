@@ -40,6 +40,8 @@ print(B)
 
 OMEGA = np.zeros((4,4))
 OMEGA[0,0:4] = 0.5*np.array([0,1,2,3])
+print("omega")
+print(OMEGA)
 
 data_idx = np.zeros(5)
 print(data_idx)
