@@ -6,6 +6,7 @@ import mavros
 from sensor_msgs.msg import NavSatFix, Imu
 
 import numpy as np
+from scipy.linalg import block_diag
 from math import pi, sqrt, atan2, cos, sin
 import matplotlib.pyplot as plt
 
@@ -18,23 +19,26 @@ class SensorFusion:
         self.uc = utmconv()
         self.dt = 0.02
         #First three is GPS, next 3 is IMU acc, next 3 is IMU gyro
-        self.data_idx = np.zeros(9, dtype=np.int8)
+        self.data_idx = np.zeros(5, dtype=np.int8)
+        self.data_idx[3:5] = 1
         self.lat = 0
         self.lon = 0
         self.alt = 0
-        self.u = np.zeros((6,1))
         self.y = np.zeros((3,1))
         self.xhat = np.zeros((3,1))
         self.sigma = np.identity(self.xhat.shape[0])*10000
         self.Q = np.identity(self.u.shape[0])
         self.R = np.identity(self.y.shape[0])*0.02
         self.C = np.identity(self.y.shape[0])
-        self.setup_state_model()
+
         ## Nyt stuff:
+        #settings
+        self.sigma_gps = 3/sqrt(3)
+        self.sigma_non_holonomic = 20
+        self.u = np.zeros((6,1))
         self.xh = self.init_navigation_state()
         self.delta_u_h = np.zeros((6,1))
         (self.P, self.Q1, self.Q2, _, _) = self.init_filter()
-        
         
         
     def setup_subs(self):
@@ -52,17 +56,6 @@ class SensorFusion:
     def imu_cb(self, msg):
         self.u = np.asarray([msg.linear_acceleration.x, msg.linear_acceleration.y, msg.linear_acceleration.z,
                             msg.angular_velocity.x, msg.angular_velocity.y, msg.angular_velocity.z]).reshape(6,1)
-        self.data_idx[3:9] = 1
-
-    def setup_state_model(self):
-        self.A = np.identity(self.xhat.shape[0])
-        #self.A[0][3] = self.dt
-        #self.A[1][4] = self.dt
-        #self.A[2][5] = self.dt
-        B1 = np.identity(3)*0.5*self.dt*self.dt
-        self.B = B1
-        #B2 = np.identity(3)*self.dt
-        #self.B = np.concatenate((B1,B2))
 
     def init_navigation_state(self):
         roll = 0
@@ -116,21 +109,163 @@ class SensorFusion:
         H = np.concatenate((np.eye(3), np.zeros((3,12))), axis=1)
         return (P,Q1,Q2,R,H)
 
+    def q2dcm(q):
+        # Function for transformation from quaternions to directional cosine matrix
+        p = np.zeros((6,1))
+        p[0:4] = pow(q[0:4],2)
+        p[4] = p[1] + p[2]
+        if p[0] + p[3] + p[4] != 0:
+            p[5] = 2/(p[0]+p[3]+p[4])
+        else:
+            p[5] = 0
+        R = np.zeros((3,3))
+        R[0,0] = 1-p[5]*p[4]
+        R[1,1] = 1-p[5]*(p[0]+p[2])
+        R[2,2] = 1-p[5]*(p[0]+p[1])
+        
+        p[0] = p[5]*q[0]
+        p[1] = p[5]*q[1]
+        p[4] = p[5]*q[2]*q[3]
+        p[5] = p[0]*q[1]
+
+        R[0,1] = p[5] - p[4]
+        R[1,0] = p[5] + p[4]
+
+        p[4] = p[1]*q[3]
+        p[5] = p[0]*q[2]
+
+        R[0,2] = p[5]+p[4]
+        R[2,0] = p[5]-p[4]
+
+        p[4] = p[0]*q[3]
+        p[5] = p[1]*q[2]
+
+        R[1,2] = p[5]-p[4]
+        R[2,1] = p[5]+p[4]
+
+        return R
+
+    def nav_eq(self, x, u, dt):
+        g_t = np.array([0,0,-9.82])
+        f_t = self.q2dcm(x[6:10])*u[0:3]
+        acc_t = f_t - g_t
+
+        A = np.eye(6)
+        A[0,3] = dt
+        A[1,4] = dt
+        A[2,5] = dt
+
+        B = np.concatenate((np.eye(3)*0.5*pow(dt,2),np.eye(3)*dt))
+
+        # Position and velocity prediction
+        x[0:5] = A*x[0:5]+B*acc_t
+
+        # Attitude Quaternion
+        w_tb = u[3:6]
+        P = w_tb[0]*dt
+        Q=w_tb[1]*dt
+        R=w_tb[2]*dt
+
+        OMEGA = np.zeros((4,4))
+        OMEGA[0,0:4] = 0.5*np.array([0, R, -Q, P])
+        OMEGA[1,0:4] = 0.5*np.array([-R, 0, P, Q])
+        OMEGA[2,0:4] = 0.5*np.array([Q, -P, 0, R])
+        OMEGA[3,0:4] = 0.5*np.array([-P, -Q, -R, 0])
+
+        v = np.linalg.norm(w_tb)*dt
+
+        if v != 0:
+            x[6:10] = (cos(v/2)*np.eye(4) + 2/v*sin(v/2)*OMEGA)*x[6:10]
+        return x
+
+
+    def state_space_model(self, x, u, Ts):
+        Rb2t = self.q2dcm(x[6:10])
+        f_t = Rb2t*u[0:3]
+        St = np.array([[0, -f_t[2], f_t[1]],[f_t[2], 0, -f_t[0]],[-f_t[1], f_t[0], 0]])
+
+        O = np.zeros((3,3))
+        I = np.eye(3)
+        Fc0 = np.concatenate((O,I,O,O,O), axis=1)
+        Fc1 = np.concatenate((O,O,St,Rb2t,O), axis=1)
+        Fc2 = np.concatenate((O,O,O,O,-Rb2t), axis=1)
+        Fc3 = np.concatenate((O,O,O,O,O), axis=1)
+        Fc4 = np.concatenate((O,O,O,O,O), axis=1)
+        Fc = np.concatenate((Fc0, Fc1, Fc2, Fc3, Fc4))
+
+        F = np.eye(15) + Ts*Fc
+
+        G = Ts*np.array([[O,O,O,O],[Rb2t,O,O,O],[O,-Rb2t,O,O],[O,O,I,O],[O,O,O,I]])
+
+        return (F,G)
+
+    def get_Rb2p(self):
+        # Function that returns the directional cosine matrix that relates the
+        # body (IMU coordinate system) to the platform (vehicle coordinate system)
+        # coordinate frame.
+        return np.eye(3)
+
+    def Gamma(self, q, epsilon):
+        R = self.q2dcm(q)
+        OMEGA = np.array([[0, -epsilon[2], epsilon[1]],[epsilon[2],0, -epsilon[0]],[-epsilon[1],epsilon[0],0]])
+        R = np.matmul((np.eye(3)-OMEGA),R)
+        q = self.dcm2q(R)
+        return q
+
 
     def filter(self):
-        print("filter")
-        #Run Kalman filter
+        Ts = self.dt
+        # Calibrate the sensor measurements using current sensor bias estimate.
+        self.u_h = self.u + self.delta_u_h
+        # Update the INS navigation state
+        self.xh = nav_eq(self.xh, self.u_h, Ts)
+        # Get state space model matrices
+        (self.F, self.G) = self.state_space_model(self.xh, self.u_h, Ts)
+        # Time update of the Kalman filter state covariance.
+        self.P = self.F*self.P*np.transpose(self.F) + self.G*block_diag(self.Q1, self.Q2)*np.transpose(self.G)
+        # Defualt measurement observation matrix  and measurement covariance matrix
+        y1 = self.y     # GPS data
+        y2 = np.zeros((2,1))
+        y = np.concatenate((y1,y2))
 
-        #prediction step
-        self.xhat = self.A.dot(self.xhat)+self.B.dot(self.u)
-        self.sigma = np.matmul(np.matmul(self.A, self.sigma),np.transpose(self.A)) + self.Q
-        #update step
-        tmp = np.linalg.inv(np.matmul(np.matmul(self.C, self.sigma), np.transpose(self.C)) + self.R)
-        K = np.matmul(np.matmul(self.sigma, np.transpose(self.C)),tmp)
-        self.xhat = self.xhat + np.matmul(K,(self.y - np.matmul(self.C, self.xhat)))
-        self.sigma = np.matmul((np.identity(self.xhat.shape[0]) - np.matmul(K,self.C)),self.sigma)
+        Rn2p = self.get_Rb2p()*np.transpose(self.q2dcm(self.xh[6:10]))
+        H1 = np.concatenate((np.eye(3),np.zeros((3,12))),axis=1)
+        H2 = np.concatenate((np.zeros((3,3)), Rn2p, np.zeros((3,9))),axis=1)
+        H = np.concatenate((H1, H2))
+
+        R1 = np.concatenate((self.sigma_gps*self.sigma_gps*eye(3), np.zeros((3,2)))axis=1)
+        R2 = np.concatenate((np.zeros((2,3)), self.sigma_non_holonomic*self.sigma_non_holonomic*np.eye(2)), axis=1)
+        R = np.concatenate((R1,R2))
+
+        tmp_H = np.zeros(5)
+        tmp_y = []
+        tmp_R = []
+        for i in range(5):
+            if data_idx[i] == 1:
+                tmp_H = np.vstack((tmp_H,H[i,:]))
+                tmp_y.append(y[i])
+                tmp_R.append(R[i,i])
 
 
+        H = tmp_H[1:]
+        y = np.array(tmp_y)
+        R = np.eye(len(tmp_R))*np.array(tmp_R)
+
+        # Calculate Kalman gain
+        tmp = np.linalg.inv(np.matmul(np.matmul(H, self.P), np.transpose(H)) + R)
+        K = np.matmul(np.matmul(self.P, np.transpose(H)),tmp)
+
+        # Update the perturbation state estimate
+        z = np.concatenate((np.zeros((9,1)),self.delta_u_h)) + K*(y-H[:0:6]*self.xh)
+
+        # Correct the navigation states using current perturbation estimates.
+        self.xh[0:6] = self.xh[0:6] + z[0:6]
+        self.xh[6:10] = self.Gamma(self.xh[7:10], z[6:9])
+        self.delta_u_h = z[9:15]
+
+        self.P = np.matmul((np.eye(15)-K*H),self.P)
+
+        
     
 
 if __name__ == "__main__":

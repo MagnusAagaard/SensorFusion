@@ -30,3 +30,29 @@ print(Q2)
 
 H = np.concatenate((np.eye(3), np.zeros((3,12))), axis=1)
 print(H)
+
+q = 2*np.ones((4,1))
+p = np.zeros((6,1))
+p[0:3] = pow(q[0:3],2)
+
+B = np.concatenate((np.eye(3)*0.5*pow(0.02,2),np.eye(3)*0.02))
+print(B)
+
+OMEGA = np.zeros((4,4))
+OMEGA[0,0:4] = 0.5*np.array([0,1,2,3])
+
+data_idx = np.zeros(5)
+print(data_idx)
+
+data_idx[3:5] = 1
+print(data_idx)
+H = np.eye(5)
+print(H[1,:])
+tmp_H = np.zeros(5)
+for i in range(5):
+    if data_idx[i] == 1:
+        tmp_H = np.vstack((tmp_H,H[i,:]))
+
+print(tmp_H[1:])
+
+print(np.eye(2)*np.array([2,4]))
