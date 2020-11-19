@@ -17,7 +17,7 @@ class SensorFusion:
     def __init__(self):
         self.uc = utmconv()
         #settings
-        self.sigma_gps = 3/sqrt(3)
+        self.sigma_gps = 1/sqrt(3)
         self.sigma_non_holonomic = 20
 
         self.dt = 0.02
@@ -54,8 +54,8 @@ class SensorFusion:
         else:
             self.gps_count += 1
         #self.data_idx[:3] = 1
-        self.y[:3] = np.asarray([n1, e1, -msg.altitude]).reshape(3,1)
-        self.gps_gt_converted.append([n1, e1, -msg.altitude])
+        self.y[:3] = (np.asarray([[n1, e1, -msg.altitude]]).reshape(3,1)-self.initial_pos).reshape(3,1)
+        self.gps_gt_converted.append(self.y[:3].flatten())
         self.gps_gt.append([self.lat, self.lon, self.alt])
 
     def imu_cb(self, msg):
@@ -73,17 +73,19 @@ class SensorFusion:
     def init_navigation_state(self):
         roll = 0
         pitch = 0
-        heading = 0
+        heading = pi/2
         # Init coord. rotational matrix
-        Rb2t = np.array(self.Rt2b([roll, pitch, heading]))
+        Rb2t = np.transpose(np.array(self.Rt2b([roll, pitch, heading])))
         q = self.dcm2q(Rb2t)
+        print(Rb2t)
         # Få inital pos estimate her og smid ind!
         msg = rospy.wait_for_message('/mavros/global_position/global', NavSatFix)
         self.lat = msg.latitude
         self.lon = msg.longitude
         (hemisphere, zone, letter, e1, n1) = self.uc.geodetic_to_utm(self.lat,self.lon)
-        initial_pos = np.array([n1, e1, -msg.altitude]).reshape(3,1)
-        x_h = np.concatenate((initial_pos,np.zeros((3,1)), q))
+        self.initial_pos = np.array([n1, e1, -msg.altitude]).reshape(3,1)
+        x_h = np.concatenate((np.zeros((6,1)), q))
+        print(q)
         return x_h
 
     def Rt2b(self, ang):
@@ -94,16 +96,16 @@ class SensorFusion:
         sp = sin(ang[1])
         cy = cos(ang[2])
         sy = sin(ang[2])
-        R = np.asarray([[cy*cp, sy*cp, -1*sp],[-1*sy*cr+cy*sp*sr, cy*cr+sy*sp*sr, cp*sr], [sy*sr+cy*sp*cr, -1*cy*sr+sy*sp*cr, cp*cr]])
+        R = np.asarray([[cy*cp, sy*cp, -sp],[-sy*cr+cy*sp*sr, cy*cr+sy*sp*sr, cp*sr], [sy*sr+cy*sp*cr, -cy*sr+sy*sp*cr, cp*cr]])
         return R
 
     def dcm2q(self, R):
         # Function for transformation from directional cosine matrix to quaternions
         q = np.zeros((4,1))
         q[3] = 0.5*sqrt(1+np.sum(np.diag(R)))
-        q[0] = (R[2,1]-R[1,2])/(4*q[3])
-        q[1] = (R[0,2]-R[2,0])/(4*q[3])
-        q[2] = (R[1,0]-R[0,1])/(4*q[3])
+        q[0] = (R[2,1]-R[1,2])/(4*q[3][0])
+        q[1] = (R[0,2]-R[2,0])/(4*q[3][0])
+        q[2] = (R[1,0]-R[0,1])/(4*q[3][0])
         return q
 
     def init_filter(self):
@@ -114,15 +116,15 @@ class SensorFusion:
         factp = np.asarray([pow(1*pi/180,2), pow(1*pi/180,2), pow(20*pi/180,2)])
         P[6:9,6:9] = np.diag(factp)    # Attitude (roll, pitch, yaw) [rad]
         P[9:12,9:12] = pow(0.02,2)*np.eye(3)     # Accelerometer biases [m/s^2]
-        P[12:,12:] = pow((0.05*pi/180),2)*np.eye(3) # Gyro biases [rad/s]
+        P[12:15,12:15] = pow((0.05*pi/180),2)*np.eye(3) # Gyro biases [rad/s]
         # Process noise covariance
         Q1 = np.zeros((6,6))
-        Q1[0:3,0:3] = np.diag(pow(0.05,2)*np.eye(3))        # sigma acc
-        Q1[3:,3:] = np.diag(pow(0.1*pi/180,2)*np.eye(3))    # sigma gyro
+        Q1[0:3,0:3] = np.diag(pow(0.05,2)*np.ones((3,3)))        # sigma acc
+        Q1[3:6,3:6] = np.diag(pow(0.1*pi/180,2)*np.ones((3,3)))    # sigma gyro
         Q2 = np.zeros((6,6))
-        Q2[0:3,0:3] = np.eye(3)* pow(0.0001,2)              # sigma acc bias
-        Q2[3:,3:] = np.eye(3)*pow(0.01*pi/180,2)            # sigma gyro bias
-        R = np.eye(3)*pow(3/sqrt(3),2)                      # GNSS-receiver position measurement noise
+        Q2[0:3,0:3] = pow(0.0001,2)*np.eye(3)             # sigma acc bias
+        Q2[3:,3:] = pow(0.01*pi/180,2)*np.eye(3)            # sigma gyro bias
+        R = pow(3/sqrt(3),2)*np.eye(3)                      # GNSS-receiver position measurement noise
         # Observation matrix
         H = np.concatenate((np.eye(3), np.zeros((3,12))), axis=1)
         return (P,Q1,Q2,R,H)
@@ -173,7 +175,7 @@ class SensorFusion:
         A[1,4] = dt
         A[2,5] = dt
 
-        B = np.concatenate((np.eye(3)*0.5*pow(dt,2),np.eye(3)*dt))
+        B = np.concatenate((0.5*pow(dt,2)*np.eye(3),dt*np.eye(3)))
 
         # Position and velocity prediction
         x[0:6] = np.matmul(A,x[0:6])+np.matmul(B,acc_t)

@@ -17,10 +17,10 @@ if __name__ == "__main__":
 
 
     fig, ax = plt.subplots()
-    e = [float(i[0]) - float(data[0][0]) for i in data]
-    n = [float(i[1]) - float(data[0][1]) for i in data]
-    e1 = [float(i[0]) - float(gt_data[0][0]) for i in gt_data]
-    n1 = [float(i[1]) - float(gt_data[0][1]) for i in gt_data]
+    e = [float(i[1]) for i in data]
+    n = [float(i[0]) for i in data]
+    e1 = [float(i[1]) for i in gt_data]
+    n1 = [float(i[0]) for i in gt_data]
     ax.plot(e, n, label='Path')
     ax.plot(e1, n1, label='GT')
     legend = ax.legend(loc='best', shadow=True, fontsize='medium')

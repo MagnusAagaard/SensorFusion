@@ -58,3 +58,15 @@ for i in range(5):
 print(tmp_H[1:])
 
 print(np.eye(2)*np.array([2,4]))
+
+def dcm2q(R):
+        # Function for transformation from directional cosine matrix to quaternions
+        q = np.zeros((4,1))
+        q[3] = 0.5*sqrt(1+np.sum(np.diag(R)))
+        q[0] = (R[2,1]-R[1,2])/(4*q[3][0])
+        q[1] = (R[0,2]-R[2,0])/(4*q[3][0])
+        q[2] = (R[1,0]-R[0,1])/(4*q[3][0])
+        return q
+
+R = np.array([[1, 2, 3],[4,5,6],[7,8,9]])
+print(dcm2q(R))
