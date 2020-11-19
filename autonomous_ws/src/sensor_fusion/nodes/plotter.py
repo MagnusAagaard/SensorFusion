@@ -10,7 +10,7 @@ if __name__ == "__main__":
         for row in data_tmp:
             data.append(row)
 
-    with open('/home/magnus/CAS/SensorFusion/gps_data.csv') as csvfile:
+    with open('/home/magnus/CAS/SensorFusion/gps_data_converted.csv') as csvfile:
         data_tmp = csv.reader(csvfile)
         for row in data_tmp:
             gt_data.append(row)
