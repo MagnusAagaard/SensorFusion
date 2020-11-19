@@ -34,6 +34,7 @@ class SensorFusion:
         self.setup_subs()
         self.xh_s = []
         self.gps_gt = []
+        self.imu_data = []
         
         
     def setup_subs(self):
@@ -51,6 +52,7 @@ class SensorFusion:
     def imu_cb(self, msg):
         self.u = np.asarray([msg.linear_acceleration.x, msg.linear_acceleration.y, msg.linear_acceleration.z,
                             msg.angular_velocity.x, msg.angular_velocity.y, msg.angular_velocity.z]).reshape(6,1)
+        self.imu_data.append(self.u.flatten())
 
     def init_navigation_state(self):
         roll = 0
@@ -91,7 +93,7 @@ class SensorFusion:
     def init_filter(self):
         P = np.zeros((15,15))
         # Initial Kalman filter uncertainties (standard deviations)
-        P[0:3,0:3] = pow(10,2)*np.eye(3)    # Position = 10 [m]
+        P[0:3,0:3] = pow(1,2)*np.eye(3)    # Position = 10 [m]
         P[3:6,3:6] = pow(5,2)*np.eye(3)     # Velocity = 5 [m/s]
         factp = np.asarray([pow(1*pi/180,2), pow(1*pi/180,2), pow(20*pi/180,2)])
         P[6:9,6:9] = np.diag(factp)    # Attitude (roll, pitch, yaw) [rad]
@@ -273,17 +275,29 @@ class SensorFusion:
         self.P = np.matmul((np.eye(15)-np.matmul(K,H)),self.P)
         self.xh_s.append(self.xh.flatten())
 
+    def shutdown_handler(self):
+        print("Shutting down and saving data!")
+        self.xh_s = np.asarray(self.xh_s)
+        self.gps_gt = np.asarray(self.gps_gt)
+        self.imu_data = np.asarray(self.imu_data)
+        np.savetxt("../data.csv", self.xh_s, delimiter=",")
+        np.savetxt("../gps_data.csv", self.gps_gt, delimiter=",")
+        np.savetxt("../imu_data.csv", self.imu_data, delimiter=",")
+
 
 if __name__ == "__main__":
     rospy.init_node('sensor_fusion_node', anonymous=True)
     sf = SensorFusion()
+    rospy.on_shutdown(sf.shutdown_handler)
     rate = rospy.Rate(50)
     while not rospy.is_shutdown():
         sf.filter()
         rate.sleep()
     rospy.spin()
-    print("Shutting down and saving data!")
-    sf.xh_s = np.asarray(sf.xh_s)
-    sf.gps_gt = np.asarray(sf.gps_gt)
-    np.savetxt("../data.csv", sf.xh_s, delimiter=",")
-    np.savetxt("../gps_data.csv", sf.gps_gt, delimiter=",")
+    #print("Shutting down and saving data!")
+    #sf.xh_s = np.asarray(sf.xh_s)
+    #sf.gps_gt = np.asarray(sf.gps_gt)
+    #sf.imu_data = np.asarray(sf.imu_data)
+    #np.savetxt("../data.csv", sf.xh_s, delimiter=",")
+    #np.savetxt("../gps_data.csv", sf.gps_gt, delimiter=",")
+    #np.savetxt("../imu_data.csv", sf.imu_data, delimter=",")
