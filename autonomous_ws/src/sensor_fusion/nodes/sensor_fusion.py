@@ -54,8 +54,8 @@ class SensorFusion:
         else:
             self.gps_count += 1
         #self.data_idx[:3] = 1
-        self.y[:3] = np.asarray([n1, -e1, -msg.altitude]).reshape(3,1)
-        self.gps_gt_converted.append([n1, -e1, -msg.altitude])
+        self.y[:3] = np.asarray([n1, e1, -msg.altitude]).reshape(3,1)
+        self.gps_gt_converted.append([n1, e1, -msg.altitude])
         self.gps_gt.append([self.lat, self.lon, self.alt])
 
     def imu_cb(self, msg):
@@ -82,7 +82,7 @@ class SensorFusion:
         self.lat = msg.latitude
         self.lon = msg.longitude
         (hemisphere, zone, letter, e1, n1) = self.uc.geodetic_to_utm(self.lat,self.lon)
-        initial_pos = np.array([n1, -e1, -msg.altitude]).reshape(3,1)
+        initial_pos = np.array([n1, e1, -msg.altitude]).reshape(3,1)
         x_h = np.concatenate((initial_pos,np.zeros((3,1)), q))
         return x_h
 
