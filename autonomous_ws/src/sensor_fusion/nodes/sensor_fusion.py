@@ -15,17 +15,6 @@ from utm import utmconv
 
 class SensorFusion:
     def __init__(self):
-        #self.lat = 0
-        #self.lon = 0
-        #self.alt = 0
-        
-        #self.xhat = np.zeros((3,1))
-        #self.sigma = np.identity(self.xhat.shape[0])*10000
-        #self.Q = np.identity(self.u.shape[0])
-        #self.R = np.identity(self.y.shape[0])*0.02
-        #self.C = np.identity(self.y.shape[0])
-
-        ## Nyt stuff:
         self.uc = utmconv()
         #settings
         self.sigma_gps = 3/sqrt(3)
@@ -43,7 +32,8 @@ class SensorFusion:
         self.delta_u_h = np.zeros((6,1))
         (self.P, self.Q1, self.Q2, _, _) = self.init_filter()
         self.setup_subs()
-        
+        self.xh_s = []
+        self.gps_gt = []
         
         
     def setup_subs(self):
@@ -263,6 +253,9 @@ class SensorFusion:
 
 
         H = tmp_H[1:]
+        tmp_y = np.array(tmp_y)
+        if len(tmp_y) == 5:
+            self.gps_gt.append(tmp_y[0:3].flatten())
         y = np.array(tmp_y)
         R = np.eye(len(tmp_R))*np.array(tmp_R)
 
@@ -278,11 +271,8 @@ class SensorFusion:
         self.delta_u_h = z[9:15]
 
         self.P = np.matmul((np.eye(15)-np.matmul(K,H)),self.P)
+        self.xh_s.append(self.xh.flatten())
 
-        print(self.xh)
-
-
-    
 
 if __name__ == "__main__":
     rospy.init_node('sensor_fusion_node', anonymous=True)
@@ -292,3 +282,8 @@ if __name__ == "__main__":
         sf.filter()
         rate.sleep()
     rospy.spin()
+    print("Shutting down and saving data!")
+    sf.xh_s = np.asarray(sf.xh_s)
+    sf.gps_gt = np.asarray(sf.gps_gt)
+    np.savetxt("../data.csv", sf.xh_s, delimiter=",")
+    np.savetxt("../gps_data.csv", sf.gps_gt, delimiter=",")
