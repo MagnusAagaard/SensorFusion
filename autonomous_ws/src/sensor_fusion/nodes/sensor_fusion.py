@@ -22,8 +22,8 @@ class SensorFusion:
 
         self.dt = 0.02
         self.y = np.zeros((3,1))
-        self.data_idx = np.zeros(5, dtype=np.int8)
-        self.data_idx[3:5] = 1
+        self.data_idx = np.zeros(6, dtype=np.int8)
+        self.data_idx[4:6] = 1
         msg = rospy.wait_for_message('mavros/imu/data_raw', Imu)
         self.u = np.asarray([msg.linear_acceleration.x, msg.linear_acceleration.y, msg.linear_acceleration.z,
                             msg.angular_velocity.x, msg.angular_velocity.y, msg.angular_velocity.z]).reshape(6,1)
@@ -33,8 +33,10 @@ class SensorFusion:
         (self.P, self.Q1, self.Q2, _, _) = self.init_filter()
         self.setup_subs()
         self.xh_s = []
+        self.gps_gt_converted = []
         self.gps_gt = []
         self.imu_data = []
+        self.gps_count = 0
         
         
     def setup_subs(self):
@@ -46,12 +48,26 @@ class SensorFusion:
         self.lon = msg.longitude
         self.alt = msg.altitude
         (hemisphere, zone, letter, e1, n1) = self.uc.geodetic_to_utm(self.lat,self.lon)
-        self.data_idx[:3] = 1
-        self.y[:3] = np.asarray([e1, n1, msg.altitude]).reshape(3,1)
+        if self.gps_count == 50:
+            self.data_idx[:3] = 1
+            self.gps_count = 0
+        else:
+            self.gps_count += 1
+        #self.data_idx[:3] = 1
+        self.y[:3] = np.asarray([n1, -e1, -msg.altitude]).reshape(3,1)
+        self.gps_gt_converted.append([n1, -e1, -msg.altitude])
+        self.gps_gt.append([self.lat, self.lon, self.alt])
 
     def imu_cb(self, msg):
-        self.u = np.asarray([msg.linear_acceleration.x, msg.linear_acceleration.y, msg.linear_acceleration.z,
-                            msg.angular_velocity.x, msg.angular_velocity.y, msg.angular_velocity.z]).reshape(6,1)
+        
+        self.u_acc = np.asarray([msg.linear_acceleration.x, msg.linear_acceleration.y, msg.linear_acceleration.z]).reshape(3,1)
+        self.u_gyro = np.array([msg.angular_velocity.x, msg.angular_velocity.y, msg.angular_velocity.z]).reshape(3,1)
+        
+        #Ry = np.array([[cos(pi),0,sin(pi)],[0,1,0],[-sin(pi),0,cos(pi)]])
+        Rx = np.array([[1,0,0],[0,cos(pi),-sin(pi)],[0,sin(pi),cos(pi)]])
+        self.u_acc = np.matmul(Rx,self.u_acc)
+        self.u_gyro = np.matmul(Rx,self.u_gyro)
+        self.u = np.concatenate((self.u_acc, self.u_gyro))
         self.imu_data.append(self.u.flatten())
 
     def init_navigation_state(self):
@@ -66,7 +82,7 @@ class SensorFusion:
         self.lat = msg.latitude
         self.lon = msg.longitude
         (hemisphere, zone, letter, e1, n1) = self.uc.geodetic_to_utm(self.lat,self.lon)
-        initial_pos = np.array([e1,n1, msg.altitude]).reshape(3,1)
+        initial_pos = np.array([n1, -e1, -msg.altitude]).reshape(3,1)
         x_h = np.concatenate((initial_pos,np.zeros((3,1)), q))
         return x_h
 
@@ -213,7 +229,7 @@ class SensorFusion:
 
     def Gamma(self, q, epsilon):
         R = self.q2dcm(q)
-        OMEGA = np.array([[0, -epsilon[2][0], epsilon[1][0]],[epsilon[2][0],0, -epsilon[0][0]],[-epsilon[1][0],epsilon[0][0],0]])
+        OMEGA = np.array([[0, -epsilon[2][0], epsilon[1][0]],[epsilon[2][0], 0, -epsilon[0][0]],[-epsilon[1][0],epsilon[0][0],0]])
         R = np.matmul((np.eye(3)-OMEGA),R)
         q = self.dcm2q(R)
         return q
@@ -231,7 +247,7 @@ class SensorFusion:
         self.P = np.matmul(self.F,(np.matmul(self.P,np.transpose(self.F)))) + np.matmul(self.G, (np.matmul(block_diag(self.Q1, self.Q2),np.transpose(self.G))))
         # Defualt measurement observation matrix  and measurement covariance matrix
         y1 = self.y     # GPS data
-        y2 = np.zeros((2,1))
+        y2 = np.zeros((3,1))
         y = np.concatenate((y1,y2))
 
         Rn2p = np.matmul(self.get_Rb2p(),np.transpose(self.q2dcm(self.xh[6:10])))
@@ -239,14 +255,15 @@ class SensorFusion:
         H2 = np.concatenate((np.zeros((3,3)), Rn2p, np.zeros((3,9))),axis=1)
         H = np.concatenate((H1, H2))
 
-        R1 = np.concatenate((pow(self.sigma_gps,2)*np.eye(3), np.zeros((3,2))),axis=1)
-        R2 = np.concatenate((np.zeros((2,3)), pow(self.sigma_non_holonomic,2)*np.eye(2)), axis=1)
-        R = np.concatenate((R1,R2))
+        R1 = np.concatenate((pow(self.sigma_gps,2)*np.eye(3), np.zeros((3,3))),axis=1)
+        R2 = np.concatenate((np.zeros((1,3)), 0*np.eye(1) ,np.zeros((1,2))), axis=1)
+        R3 = np.concatenate((np.zeros((2,4)), pow(self.sigma_non_holonomic,2)*np.eye(2)), axis=1)
+        R = np.concatenate((R1,R2,R3))
 
         tmp_H = np.zeros(15)
         tmp_y = []
         tmp_R = []
-        for i in range(5):
+        for i in range(6):
             if self.data_idx[i] == 1:
                 tmp_H = np.vstack((tmp_H,H[i,:]))
                 tmp_y.append(y[i])
@@ -256,8 +273,8 @@ class SensorFusion:
 
         H = tmp_H[1:]
         tmp_y = np.array(tmp_y)
-        if len(tmp_y) == 5:
-            self.gps_gt.append(tmp_y[0:3].flatten())
+        #if len(tmp_y) == 5:
+        #    self.gps_gt.append(tmp_y[0:3].flatten())
         y = np.array(tmp_y)
         R = np.eye(len(tmp_R))*np.array(tmp_R)
 
@@ -279,10 +296,12 @@ class SensorFusion:
         print("Shutting down and saving data!")
         self.xh_s = np.asarray(self.xh_s)
         self.gps_gt = np.asarray(self.gps_gt)
+        self.gps_gt_converted = np.asarray(self.gps_gt_converted)
         self.imu_data = np.asarray(self.imu_data)
         np.savetxt("../data.csv", self.xh_s, delimiter=",")
         np.savetxt("../gps_data.csv", self.gps_gt, delimiter=",")
         np.savetxt("../imu_data.csv", self.imu_data, delimiter=",")
+        np.savetxt("../gps_data_converted.csv", self.gps_gt_converted, delimiter=",")
 
 
 if __name__ == "__main__":

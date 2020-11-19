@@ -98,21 +98,37 @@ class Drone():
         targetPosition1.pose.position.x = 5
         targetPosition1.pose.position.y = 5
         targetPosition1.pose.position.z = self.altitude
+        targetPosition1.pose.orientation.x = 0
+        targetPosition1.pose.orientation.y = 0
+        targetPosition1.pose.orientation.z = 0.383
+        targetPosition1.pose.orientation.w = 0.924
         waypoints.append(targetPosition1)
         targetPosition2 = PoseStamped()
         targetPosition2.pose.position.x = 10
         targetPosition2.pose.position.y = 0
         targetPosition2.pose.position.z = self.altitude
+        targetPosition2.pose.orientation.x = 0
+        targetPosition2.pose.orientation.y = 0
+        targetPosition2.pose.orientation.z = -0.383
+        targetPosition2.pose.orientation.w = 0.924
         waypoints.append(targetPosition2)
         targetPosition3 = PoseStamped()
         targetPosition3.pose.position.x = 5
         targetPosition3.pose.position.y = -5
         targetPosition3.pose.position.z = self.altitude
+        targetPosition3.pose.orientation.x = 0
+        targetPosition3.pose.orientation.y = 0
+        targetPosition3.pose.orientation.z = -0.924
+        targetPosition3.pose.orientation.w = 0.383
         waypoints.append(targetPosition3)
         targetPosition4 = PoseStamped()
         targetPosition4.pose.position.x = 0
         targetPosition4.pose.position.y = 0
         targetPosition4.pose.position.z = self.altitude
+        targetPosition4.pose.orientation.x = 0
+        targetPosition4.pose.orientation.y = 0
+        targetPosition4.pose.orientation.z = 0.924
+        targetPosition4.pose.orientation.w = 0.383
         waypoints.append(targetPosition4)
         targetPosition5 = PoseStamped()
         targetPosition5.pose.position.x = 0
