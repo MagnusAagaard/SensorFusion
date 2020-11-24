@@ -5,8 +5,8 @@
       <author>Blender User</author>
       <authoring_tool>Blender 2.90.1 commit date:2020-09-23, commit time:06:43, hash:3e85bb34d0d7</authoring_tool>
     </contributor>
-    <created>2020-11-03T13:40:06</created>
-    <modified>2020-11-03T13:40:06</modified>
+    <created>2020-11-03T14:40:04</created>
+    <modified>2020-11-03T14:40:04</modified>
     <unit name="meter" meter="1"/>
     <up_axis>Z_UP</up_axis>
   </asset>
@@ -96,32 +96,25 @@
         </technique>
       </profile_COMMON>
     </effect>
-    <effect id="Material-effect">
+    <effect id="Material_003-effect">
       <profile_COMMON>
+        <newparam sid="Brown-wooden-parquet-texture_jpg-surface">
+          <surface type="2D">
+            <init_from>Brown-wooden-parquet-texture_jpg</init_from>
+          </surface>
+        </newparam>
+        <newparam sid="Brown-wooden-parquet-texture_jpg-sampler">
+          <sampler2D>
+            <source>Brown-wooden-parquet-texture_jpg-surface</source>
+          </sampler2D>
+        </newparam>
         <technique sid="common">
           <lambert>
             <emission>
               <color sid="emission">0 0 0 1</color>
             </emission>
             <diffuse>
-              <color sid="diffuse">0.8000001 0.4895341 0.0399844 1</color>
-            </diffuse>
-            <index_of_refraction>
-              <float sid="ior">1.45</float>
-            </index_of_refraction>
-          </lambert>
-        </technique>
-      </profile_COMMON>
-    </effect>
-    <effect id="Material_001-effect">
-      <profile_COMMON>
-        <technique sid="common">
-          <lambert>
-            <emission>
-              <color sid="emission">0 0 0 1</color>
-            </emission>
-            <diffuse>
-              <color sid="diffuse">0.8 0.8 0.8 1</color>
+              <texture texture="Brown-wooden-parquet-texture_jpg-sampler" texcoord="UVMap"/>
             </diffuse>
             <index_of_refraction>
               <float sid="ior">1.45</float>
@@ -131,16 +124,17 @@
       </profile_COMMON>
     </effect>
   </library_effects>
-  <library_images/>
+  <library_images>
+    <image id="Brown-wooden-parquet-texture_jpg" name="Brown-wooden-parquet-texture_jpg">
+      <init_from>Brown-wooden-parquet-texture.jpg</init_from>
+    </image>
+  </library_images>
   <library_materials>
     <material id="Material_002-material" name="Material.002">
       <instance_effect url="#Material_002-effect"/>
     </material>
-    <material id="Material-material" name="Material">
-      <instance_effect url="#Material-effect"/>
-    </material>
-    <material id="Material_001-material" name="Material.001">
-      <instance_effect url="#Material_001-effect"/>
+    <material id="Material_003-material" name="Material.003">
+      <instance_effect url="#Material_003-effect"/>
     </material>
   </library_materials>
   <library_geometries>
@@ -388,7 +382,7 @@
         <vertices id="Cube_001-mesh-vertices">
           <input semantic="POSITION" source="#Cube_001-mesh-positions"/>
         </vertices>
-        <triangles material="Material-material" count="84">
+        <triangles material="Material_003-material" count="84">
           <input semantic="VERTEX" source="#Cube_001-mesh-vertices" offset="0"/>
           <input semantic="NORMAL" source="#Cube_001-mesh-normals" offset="1"/>
           <input semantic="TEXCOORD" source="#Cube_001-mesh-map" offset="2" set="0"/>
@@ -423,6 +417,9 @@
               <instance_material symbol="Material_002-material" target="#Material_002-material">
                 <bind_vertex_input semantic="UVMap" input_semantic="TEXCOORD" input_set="0"/>
               </instance_material>
+              <instance_material symbol="Material_003-material" target="#Material_003-material">
+                <bind_vertex_input semantic="UVMap" input_semantic="TEXCOORD" input_set="0"/>
+              </instance_material>
             </technique_common>
           </bind_material>
         </instance_geometry>
@@ -432,10 +429,7 @@
         <instance_geometry url="#Cube_001-mesh" name="Cube.001">
           <bind_material>
             <technique_common>
-              <instance_material symbol="Material-material" target="#Material-material">
-                <bind_vertex_input semantic="UVMap" input_semantic="TEXCOORD" input_set="0"/>
-              </instance_material>
-              <instance_material symbol="Material_001-material" target="#Material_001-material">
+              <instance_material symbol="Material_003-material" target="#Material_003-material">
                 <bind_vertex_input semantic="UVMap" input_semantic="TEXCOORD" input_set="0"/>
               </instance_material>
             </technique_common>
