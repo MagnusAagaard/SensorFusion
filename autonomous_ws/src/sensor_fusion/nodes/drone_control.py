@@ -80,7 +80,7 @@ class Drone():
 
             # reached takeoff position
             header = Header()
-            while(0.2 < self.distanceToTarget(self.takeOffPosition)):
+            while(0.5 < self.distanceToTarget(self.takeOffPosition)):
                 header.stamp = rospy.Time.now()
                 self.takeOffPosition.header = header
                 self.target_pos_pub.publish(self.takeOffPosition)
@@ -89,8 +89,8 @@ class Drone():
     def distanceToTarget(self,targetPosition):
         x = targetPosition.pose.position.x - self.current_position.pose.position.x
         y = targetPosition.pose.position.y - self.current_position.pose.position.y
-        z = targetPosition.pose.position.z - self.current_position.pose.position.z
-        return sqrt(x*x + y*y + z*z)
+        #z = targetPosition.pose.position.z - self.current_position.pose.position.z
+        return sqrt(x*x + y*y) #+ z*z)
 
     def makeWaypoints(self):
         waypoints = []
